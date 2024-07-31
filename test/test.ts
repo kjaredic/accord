@@ -3,7 +3,8 @@ import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ParamsStruct } from '../typechain-types/SwapFactory';
 import { VirtualSwapObject } from '../sdk';
 import { expect } from 'chai';
-import { generate_swap_params } from '../sdk/utils';
+import { generateTestCase } from './test-utils';
+import { printParams } from '../sdk/utils';
 
 const base_fixture = async () => {
     const [signer, maker, taker, random] = await ethers.getSigners();
@@ -12,10 +13,11 @@ const base_fixture = async () => {
         .then((c) => c.connect(signer).deploy());
     const swap_factory_address = await swap_factory.getAddress();
 
-    const params = generate_swap_params();
-    params.create_args.maker = maker.address;
-    params.create_args.taker = taker.address;
+    const to_block = await ethers.provider.getBlockNumber();
+    const params = await generateTestCase(maker.address, taker.address, to_block - 1);
     const swapObj = new VirtualSwapObject({ swap_factory_address, params });
+
+    await swapObj.transfer(maker);
 
     return {
         swapObj,
@@ -27,7 +29,14 @@ const base_fixture = async () => {
 const take_fixture = async () => {
     const fixture_params = await loadFixture(base_fixture);
     const taker_deadline = 0n;
+
+    printParams(fixture_params.swapObj.params);
+
+    await fixture_params.swapObj.transfer(fixture_params.maker);
+    await fixture_params.swapObj.approve(fixture_params.taker);
+
     const take_tx = await fixture_params.swapObj.take(fixture_params.taker, taker_deadline);
+
     return {
         take_tx,
         ...fixture_params,
@@ -43,7 +52,9 @@ const bail_fixture = async () => {
     };
 };
 
-describe('SwapFactory Tests', () => {
+describe('SwapFactory Tests', function () {
+    this.timeout(120_000);
+
     describe('SwapFactory::take flow', async () => {
         it('... should take', async () => {
             const { take_tx: { gasUsed } } = await loadFixture(take_fixture);

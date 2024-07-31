@@ -3,6 +3,7 @@ import { ParamsStruct, SwapFactory } from '../typechain-types/SwapFactory';
 import { expect } from 'chai';
 import { AddressLike, ContractTransactionReceipt, Signer } from 'ethers';
 import { calculateSwapAddress } from '../sdk/utils';
+import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
 
 export class VirtualSwapObject {
     public readonly swap_factory_address: Readonly<string>;
@@ -30,15 +31,15 @@ export class VirtualSwapObject {
                     eth_amount: maker_lot.eth_amount,
                     erc20: maker_lot.erc20.slice(),
                     erc20_amounts: maker_lot.erc20_amounts.slice(),
-                    erc721: maker_lot.erc20.slice(),
-                    erc721_ids: maker_lot.erc721_ids.map((e) => e.slice()),
+                    erc721: maker_lot.erc721.slice(),
+                    erc721_ids: maker_lot.erc721_ids.slice(),
                 },
                 taker_lot: {
                     eth_amount: taker_lot.eth_amount,
                     erc20: taker_lot.erc20.slice(),
                     erc20_amounts: taker_lot.erc20_amounts.slice(),
-                    erc721: taker_lot.erc20.slice(),
-                    erc721_ids: taker_lot.erc721_ids.map((e) => e.slice()),
+                    erc721: taker_lot.erc721.slice(),
+                    erc721_ids: taker_lot.erc721_ids.slice(),
                 }
             },
         };
@@ -47,9 +48,10 @@ export class VirtualSwapObject {
     async take(signer: Signer, taker_deadline: bigint) {
         const { swap_factory, swap_address, deploy_proxy_address } = await this._verifyAddressCalculation();
 
+        const taker_eth_amount = this.params.create_args.taker_lot.eth_amount;
         const tx = await swap_factory
             .connect(signer)
-            .take(taker_deadline, this.params)
+            .take(taker_deadline, this.params, {value: taker_eth_amount})
             .then((r) => r.wait())
             .then((r) => r!);
 
@@ -74,12 +76,58 @@ export class VirtualSwapObject {
         return tx;
     }
 
+    async transfer(signer: HardhatEthersSigner) {
+        const { swap_address, swap_factory } = await this._verifyAddressCalculation();
+
+        const maker = await ethers.getSigner(this.params.create_args.maker.toString());
+        expect(signer.address).to.be.eq(maker.address);
+
+        const maker_lot = await swap_factory.getPendingMakerLot(this.params);
+
+        if (maker_lot.eth_amount != 0n) {
+            await maker.sendTransaction({ to: swap_address, value: maker_lot.eth_amount});
+        }
+        await Promise.all(maker_lot.erc20.map(
+            async (e, i) => {
+                const token = await ethers.getContractAt('IERC20', e.toString());
+                return token.connect(maker).transfer(swap_address, maker_lot.erc20_amounts[i]);
+            },
+        ));
+        await Promise.all(maker_lot.erc721.map(
+            async (e, i) => {
+                const token = await ethers.getContractAt('IERC721', e.toString());
+                return token.connect(maker).transferFrom(maker.address, swap_address, maker_lot.erc721_ids[i]);
+            },
+        ));
+    }
+
+    async approve(signer: HardhatEthersSigner) {
+        const { swap_address, swap_factory } = await this._verifyAddressCalculation();
+
+        const taker = await ethers.getSigner(this.params.create_args.taker.toString());
+        expect(signer.address).to.be.eq(taker.address);
+
+        const taker_lot = await swap_factory.getPendingTakerLot(this.params);
+        await Promise.all(taker_lot.erc20.map(
+            async (e, i) => {
+                const token = await ethers.getContractAt('IERC20', e.toString());
+                return token.connect(taker).approve(swap_address, taker_lot.erc20_amounts[i]);
+            },
+        ));
+        await Promise.all(taker_lot.erc721.map(
+            async (e, i) => {
+                const token = await ethers.getContractAt('IERC721', e.toString());
+                return token.connect(taker).approve(swap_address, taker_lot.erc721_ids[i]);
+            },
+        ));
+    }
+
     async publish(signer: Signer) {
         const { swap_factory } = await this._verifyAddressCalculation();
 
         const tx = await swap_factory
             .connect(signer)
-            .publishSwap(this.params)
+            .publish(this.params)
             .then((r) => r.wait())
             .then((r) => r!);
 

@@ -2,6 +2,7 @@ import TransientDeployProxyAbi from '../artifacts/contracts/TransientDeployProxy
 import { ethers } from 'hardhat';
 import { ParamsStruct, CreateArgsStruct } from '../typechain-types/SwapFactory';
 import { Signer, ZeroAddress } from 'ethers';
+import { erc20_list, erc721_list } from '../test/test-data';
 
 const deploy_proxy_cretioncode = TransientDeployProxyAbi.bytecode;
 const coder = ethers.AbiCoder.defaultAbiCoder();
@@ -11,7 +12,7 @@ const LOT_TYPE = `(
     address[] erc20,
     uint256[] erc20_amounts,
     address[] erc721,
-    uint256[][] erc721_ids,
+    uint256[] erc721_ids,
 )`;
 const CREATE_ARGS_TYPE = `(
     address maker,
@@ -78,4 +79,43 @@ export function calculateSwapAddress({
     const swap_address = ethers.getCreateAddress({ from: deploy_proxy_address, nonce: 1n });
 
     return { deploy_proxy_address, swap_address };
+}
+
+export function printParams(params: ParamsStruct) {
+    const maker_lot = params.create_args.maker_lot;
+    const maker_lot_tag_list = [];
+
+    if (maker_lot.eth_amount != 0n) maker_lot_tag_list.push(`${(Number(maker_lot.eth_amount) / 1e18).toFixed(2)} ETH`);
+    for (let i = 0; i < maker_lot.erc20.length; i++) {
+        const token = maker_lot.erc20[i];
+        const { symbol, decimals } = erc20_list.find(({address}) => address === token)!;
+        const amount = maker_lot.erc20_amounts[i];
+        maker_lot_tag_list.push(`${(Number(amount) / (10 ** decimals)).toFixed(2)} ${symbol}`);
+    }
+    for (let i = 0; i < maker_lot.erc721.length; i++) {
+        const token = maker_lot.erc721[i];
+        const { symbol } = erc721_list.find(({address}) => address === token)!;
+        const id = maker_lot.erc721_ids[i];
+        maker_lot_tag_list.push(`${symbol}#${id}`);
+    }
+
+    const taker_lot = params.create_args.taker_lot;
+    const taker_lot_tag_list = [];
+
+    if (taker_lot.eth_amount != 0n) taker_lot_tag_list.push(`${(Number(taker_lot.eth_amount) / 1e18).toFixed(2)} ETH`);
+    for (let i = 0; i < taker_lot.erc20.length; i++) {
+        const token = taker_lot.erc20[i];
+        const { symbol, decimals } = erc20_list.find(({address}) => address === token)!;
+        const amount = taker_lot.erc20_amounts[i];
+        taker_lot_tag_list.push(`${(Number(amount) / (10 ** decimals)).toFixed(2)} ${symbol}`);
+    }
+    for (let i = 0; i < taker_lot.erc721.length; i++) {
+        const token = taker_lot.erc721[i];
+        const { symbol } = erc721_list.find(({address}) => address === token)!;
+        const id = taker_lot.erc721_ids[i];
+        taker_lot_tag_list.push(`${symbol}#${id}`);
+    }
+
+    console.log('maker lot:', maker_lot_tag_list);
+    console.log('taker lot:', taker_lot_tag_list);
 }
