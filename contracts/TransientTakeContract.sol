@@ -23,22 +23,19 @@ contract TransientTakeContract {
         }
 
         for (uint256 i; i < _create_args.maker_lot.erc721.length; i++) {
-            for (uint j; j < _create_args.maker_lot.erc721_ids[i].length; j++) {
-                IERC721(_create_args.maker_lot.erc721[i]).transferFrom(
-                    address(this),
-                    _create_args.taker,
-                    _create_args.maker_lot.erc721_ids[i][j]
-                );
-            }
+            IERC721(_create_args.maker_lot.erc721[i]).transferFrom(
+                address(this),
+                _create_args.taker,
+                _create_args.maker_lot.erc721_ids[i]
+            );
         }
+
         for (uint256 i; i < _create_args.taker_lot.erc721.length; i++) {
-            for (uint j; j < _create_args.taker_lot.erc721_ids[i].length; j++) {
-                IERC721(_create_args.taker_lot.erc721[i]).transferFrom(
-                    _create_args.taker,
-                    _create_args.maker,
-                    _create_args.taker_lot.erc721_ids[i][j]
-                );
-            }
+            IERC721(_create_args.taker_lot.erc721[i]).transferFrom(
+                _create_args.taker,
+                _create_args.maker,
+                _create_args.taker_lot.erc721_ids[i]
+            );
         }
 
         assembly {
