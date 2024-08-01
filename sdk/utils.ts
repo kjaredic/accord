@@ -1,7 +1,7 @@
 import TransientDeployProxyAbi from '../artifacts/contracts/TransientDeployProxy.sol/TransientDeployProxy.json';
 import { ethers } from 'hardhat';
 import { ParamsStruct, CreateArgsStruct } from '../typechain-types/SwapFactory';
-import { Signer, ZeroAddress } from 'ethers';
+import { ZeroAddress } from 'ethers';
 import { erc20_list, erc721_list } from '../test/test-data';
 
 const deploy_proxy_cretioncode = TransientDeployProxyAbi.bytecode;

@@ -3,7 +3,7 @@ import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ParamsStruct } from '../typechain-types/SwapFactory';
 import { VirtualSwapObject } from '../sdk';
 import { expect } from 'chai';
-import { generateTestCase } from './test-utils';
+import { generateBailBalanceCheck, generateBalanceCheck, generateTestCase } from './test-utils';
 import { printParams } from '../sdk/utils';
 
 const base_fixture = async () => {
@@ -16,8 +16,6 @@ const base_fixture = async () => {
     const to_block = await ethers.provider.getBlockNumber();
     const params = await generateTestCase(maker.address, taker.address, to_block - 1);
     const swapObj = new VirtualSwapObject({ swap_factory_address, params });
-
-    await swapObj.transfer(maker);
 
     return {
         swapObj,
@@ -35,7 +33,9 @@ const take_fixture = async () => {
     await fixture_params.swapObj.transfer(fixture_params.maker);
     await fixture_params.swapObj.approve(fixture_params.taker);
 
+    const balanceChecker = await generateBalanceCheck(fixture_params.swapObj.params);
     const take_tx = await fixture_params.swapObj.take(fixture_params.taker, taker_deadline);
+    await balanceChecker(take_tx);
 
     return {
         take_tx,
@@ -45,7 +45,12 @@ const take_fixture = async () => {
 
 const bail_fixture = async () => {
     const fixture_params = await loadFixture(base_fixture);
+
+    await fixture_params.swapObj.transfer(fixture_params.maker);
+    const balanceChecker = await generateBailBalanceCheck(fixture_params.swapObj.params);
     const bail_tx = await fixture_params.swapObj.bail(fixture_params.maker);
+    await balanceChecker(bail_tx);
+
     return {
         bail_tx,
         ...fixture_params,
