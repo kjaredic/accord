@@ -33,7 +33,7 @@ const take_fixture = async () => {
     await fixture_params.swapObj.transfer(fixture_params.maker);
     await fixture_params.swapObj.approve(fixture_params.taker);
 
-    const balanceChecker = await generateBalanceCheck(fixture_params.swapObj.params);
+    const balanceChecker = await generateBalanceCheck(fixture_params.taker.address, fixture_params.swapObj.params);
     const take_tx = await fixture_params.swapObj.take(fixture_params.taker, taker_deadline);
     await balanceChecker(take_tx);
 

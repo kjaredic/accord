@@ -1,10 +1,10 @@
-import TransientDeployProxyAbi from '../artifacts/contracts/TransientDeployProxy.sol/TransientDeployProxy.json';
+import SwapAbi from '../artifacts/contracts/Swap.sol/Swap.json';
 import { ethers } from 'hardhat';
 import { ParamsStruct, CreateArgsStruct } from '../typechain-types/SwapFactory';
 import { ZeroAddress } from 'ethers';
 import { erc20_list, erc721_list } from '../test/test-data';
 
-const deploy_proxy_cretioncode = TransientDeployProxyAbi.bytecode;
+const swap_cretioncode = SwapAbi.bytecode;
 const coder = ethers.AbiCoder.defaultAbiCoder();
 
 const LOT_TYPE = `(
@@ -16,13 +16,13 @@ const LOT_TYPE = `(
 )`;
 const CREATE_ARGS_TYPE = `(
     address maker,
-    address taker,
     ${LOT_TYPE} maker_lot,
     ${LOT_TYPE} taker_lot,
 )`;
 const PARAMS_TYPE = `(
     uint256 maker_nonce,
     uint256 maker_deadline,
+    address taker,
     ${CREATE_ARGS_TYPE} create_args,
 )`;
 
@@ -30,9 +30,9 @@ export function generate_swap_params() {
     return {
         maker_nonce: 0n,
         maker_deadline: 0n,
+        taker: ZeroAddress,
         create_args: {
             maker: ZeroAddress,
-            taker: ZeroAddress,
             maker_lot: {
                 eth_amount: 0n,
                 erc20: [],
@@ -63,22 +63,21 @@ export function calculateSwapAddress({
         [params],
     ));
 
-    const deploy_proxy_initcode = ethers.solidityPacked(
+    const swap_initcode = ethers.solidityPacked(
         ['bytes', 'bytes'],
         [
-            deploy_proxy_cretioncode,
+            swap_cretioncode,
             coder.encode([CREATE_ARGS_TYPE],
                 [params.create_args],),
         ],
     );
-    const deploy_proxy_address = ethers.getCreate2Address(
+    const swap_address = ethers.getCreate2Address(
         swap_factory_address,
         create2_salt,
-        ethers.keccak256(deploy_proxy_initcode),
+        ethers.keccak256(swap_initcode),
     );
-    const swap_address = ethers.getCreateAddress({ from: deploy_proxy_address, nonce: 1n });
 
-    return { deploy_proxy_address, swap_address };
+    return swap_address;
 }
 
 export function printParams(params: ParamsStruct) {

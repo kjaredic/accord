@@ -132,7 +132,7 @@ function randomSplitChoice<T>(arr: T[]) {
 export async function generateTestCase(maker: string, taker: string, to_block: number) {
     const params = generate_swap_params();
     params.create_args.maker = maker;
-    params.create_args.taker = taker;
+    params.taker = taker;
 
     const [
         maker_erc20_choice,
@@ -193,9 +193,8 @@ export async function generateTestCase(maker: string, taker: string, to_block: n
 }
 
 
-export async function generateBalanceCheck(params: ParamsStruct) {
+export async function generateBalanceCheck(taker: string, params: ParamsStruct) {
     const maker = params.create_args.maker;
-    const taker = params.create_args.taker;
     const taker_lot = params.create_args.taker_lot;
     const maker_lot = params.create_args.maker_lot;
 
