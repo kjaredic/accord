@@ -21,7 +21,8 @@ contract Swap {
     }
 
     function _bail(CreateArgs memory _create_args) internal {
-        payable(_create_args.maker).transfer(address(this).balance);
+        // allowed to fail so that we don't brick other withdrawals
+        _create_args.maker.call{value: address(this).balance}("");
 
         _pushOwnedERC20(_create_args.maker, _create_args.maker_lot.erc20);
 
@@ -127,7 +128,13 @@ contract Swap {
         for (uint256 i; i < _erc20.length; i++) {
             uint256 balance = IERC20(_erc20[i]).balanceOf(address(this));
             if (balance == 0) continue;
-            IERC20(_erc20[i]).transfer(_to, balance);
+            bytes memory payload = abi.encodeWithSelector(
+                IERC20.transfer.selector,
+                _to,
+                balance
+            );
+            // allowed to fail so that we don't brick other withdrawals
+            _erc20[i].call(payload);
         }
     }
 
@@ -139,7 +146,14 @@ contract Swap {
         for (uint256 i; i < _erc721.length; i++) {
             address owner = IERC721(_erc721[i]).ownerOf(_ids[i]);
             if (owner != address(this)) continue;
-            IERC721(_erc721[i]).transferFrom(address(this), _to, _ids[i]);
+            bytes memory payload = abi.encodeWithSelector(
+                IERC721.transferFrom.selector,
+                address(this),
+                _to,
+                _ids[i]
+            );
+            // allowed to fail so that we don't brick other withdrawals
+            _erc721[i].call(payload);
         }
     }
 }

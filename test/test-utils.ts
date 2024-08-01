@@ -144,6 +144,7 @@ export async function generateTestCase(maker: string, taker: string, to_block: n
         taker_erc721_choice,
     ] = randomSplitChoice(erc721_list);
 
+    console.warn('stealing tokens for tests, slow the first time');
     {
         const maker_erc20 = await Promise.all(
             maker_erc20_choice.map(
@@ -191,7 +192,6 @@ export async function generateTestCase(maker: string, taker: string, to_block: n
 
     return params;
 }
-
 
 export async function generateBalanceCheck(taker: string, params: ParamsStruct) {
     const maker = params.create_args.maker;

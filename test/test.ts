@@ -18,6 +18,8 @@ const base_fixture = async () => {
     const params = await generateTestCase(maker.address, taker.address, to_block - 1);
     const swapObj = new VirtualSwapObject({ swap_factory_address, params });
 
+    printParams(params);
+
     return {
         swapObj,
         swap_factory,
@@ -28,8 +30,6 @@ const base_fixture = async () => {
 const take_fixture = async () => {
     const fixture_params = await loadFixture(base_fixture);
     const taker_deadline = 0n;
-
-    printParams(fixture_params.swapObj.params);
 
     await fixture_params.swapObj.transfer(fixture_params.maker);
     await fixture_params.swapObj.approve(fixture_params.taker);
