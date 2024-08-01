@@ -101,20 +101,20 @@ export class VirtualSwapObject {
         ));
     }
 
-    async approve(taker: HardhatEthersSigner) {
+    async approve(signer: HardhatEthersSigner) {
         const { swap_address, swap_factory } = await this._verifyAddressCalculation();
 
-        const taker_lot = await swap_factory.getPendingTakerLot(taker, this.params);
+        const taker_lot = await swap_factory.getPendingTakerLot(signer, this.params);
         await Promise.all(taker_lot.erc20.map(
             async (e, i) => {
                 const token = await ethers.getContractAt('IERC20', e.toString());
-                return token.connect(taker).approve(swap_address, taker_lot.erc20_amounts[i]);
+                return token.connect(signer).approve(swap_address, taker_lot.erc20_amounts[i]);
             },
         ));
         await Promise.all(taker_lot.erc721.map(
             async (e, i) => {
                 const token = await ethers.getContractAt('IERC721', e.toString());
-                return token.connect(taker).approve(swap_address, taker_lot.erc721_ids[i]);
+                return token.connect(signer).approve(swap_address, taker_lot.erc721_ids[i]);
             },
         ));
     }

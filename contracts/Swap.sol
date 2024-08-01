@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {CreateArgs, ISwapFactory, IERC20, IERC721} from "./Common.sol";
 
 /// @title Swap finalization contract
-/// @notice if invoker is swap maker, will cancle the swap, otherwise will execute the swap
+/// @notice if invoker is swap maker, will cancel the swap, otherwise will execute the swap
 contract Swap {
     constructor(CreateArgs memory _create_args) payable {
         address invoker = ISwapFactory(msg.sender).invoker();

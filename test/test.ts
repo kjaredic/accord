@@ -5,6 +5,7 @@ import { VirtualSwapObject } from '../sdk';
 import { expect } from 'chai';
 import { generateBailBalanceCheck, generateBalanceCheck, generateTestCase } from './test-utils';
 import { printParams } from '../sdk/utils';
+import { ZeroAddress } from 'ethers';
 
 const base_fixture = async () => {
     const [signer, maker, taker, random] = await ethers.getSigners();
@@ -61,9 +62,31 @@ describe('SwapFactory Tests', function () {
     this.timeout(120_000);
 
     describe('SwapFactory::take flow', async () => {
-        it('... should take', async () => {
+        it('... should execute private swap', async () => {
             const { take_tx: { gasUsed } } = await loadFixture(take_fixture);
             console.log('Take gasUsed', gasUsed);
+        });
+
+        it('... should execute public swap', async () => {
+            const fixture_params = await loadFixture(base_fixture);
+            const { swapObj, maker, taker} = fixture_params;
+            const taker_deadline = 0n;
+
+            const publicSwapObj = new VirtualSwapObject(swapObj);
+            const publicSwapParams = publicSwapObj.params as ParamsStruct;
+            publicSwapParams.taker = ZeroAddress;
+
+            await publicSwapObj.transfer(maker);
+            await publicSwapObj.approve(taker);
+
+            const balanceChecker = await generateBalanceCheck(taker.address, publicSwapObj.params);
+            const take_tx = await publicSwapObj.take(taker, taker_deadline);
+            await balanceChecker(take_tx);
+
+            return {
+                take_tx,
+                ...fixture_params,
+            };
         });
 
         it('... should revert on nonce reuse', async () => {
@@ -112,7 +135,7 @@ describe('SwapFactory Tests', function () {
     });
 
     describe('SwapFactory::bail flow', async () => {
-        it('... should bail', async () => {
+        it('... should cancel swap', async () => {
             const { bail_tx: { gasUsed } } = await loadFixture(bail_fixture);
             console.log('Bail gasUsed', gasUsed);
         });

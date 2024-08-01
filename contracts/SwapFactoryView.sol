@@ -8,10 +8,9 @@ contract SwapFactoryView {
     // VIEW
     function calculateSwapAddress(
         Params memory _params
-    ) public view returns (address) {
+    ) public view returns (address swap_address) {
         bytes32 create2_salt = keccak256(abi.encode(_params));
-        bytes memory swap_creationcode = type(Swap)
-            .creationCode;
+        bytes memory swap_creationcode = type(Swap).creationCode;
         bytes memory swap_initcode = abi.encodePacked(
             swap_creationcode,
             abi.encode(_params.create_args)
@@ -26,9 +25,7 @@ contract SwapFactoryView {
                 keccak256(swap_initcode)
             )
         );
-        address swap_address = address(uint160(uint(digest)));
-
-        return swap_address;
+        swap_address = address(uint160(uint(digest)));
     }
 
     function getPendingLots(
