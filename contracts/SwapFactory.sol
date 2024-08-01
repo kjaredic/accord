@@ -5,6 +5,10 @@ import {Params, ISwapFactory} from "./Common.sol";
 import {TransientDeployProxy} from "./TransientDeployProxy.sol";
 import {SwapFactoryView} from "./SwapFactoryView.sol";
 
+
+/// @title Contract for executing/canceling swaps
+/// @notice Maker needs to transfer assets to the calculated swap address
+/// @notice Taker needs to approve assets for the calculated swap address
 contract SwapFactory is ISwapFactory, SwapFactoryView {
     // STORAGE
     address public invoker;
@@ -17,11 +21,7 @@ contract SwapFactory is ISwapFactory, SwapFactoryView {
     error Unauthorized();
 
     // EVENT
-    event Publish(
-        address indexed _maker,
-        uint256 indexed _nonce,
-        Params _params
-    );
+    event Publish(address indexed _maker, uint256 indexed _nonce, Params _params);
     event Take(address indexed _maker, uint256 indexed _nonce, Params _params);
     event Bail(address indexed _maker, uint256 indexed _nonce, Params _params);
 
@@ -37,6 +37,10 @@ contract SwapFactory is ISwapFactory, SwapFactoryView {
     }
 
     // EXTERNAL
+
+    /// @notice Execute the swap, taker gets maker_lot, maker gets taker_lot
+    /// @notice If taker is 0x0 anyone can call this function, otherwise only taker
+    /// @notice If taker_lot has ETH, it should be sent here
     function take(
         uint256 _taker_deadline,
         Params memory _params
@@ -50,10 +54,12 @@ contract SwapFactory is ISwapFactory, SwapFactoryView {
 
         if (taker == address(0) || (msg.sender) == taker) {
             taker = msg.sender;
-            if (maker_deadline != 0 && maker_deadline < block.timestamp)
+            if (maker_deadline != 0 && maker_deadline < block.timestamp) {
                 revert MakerDeadlineExpired();
-            if (_taker_deadline != 0 && _taker_deadline < block.timestamp)
+            }
+            if (_taker_deadline != 0 && _taker_deadline < block.timestamp) {
                 revert TakerDeadlineExpired();
+            }
         } else {
             revert Unauthorized();
         }
@@ -62,6 +68,8 @@ contract SwapFactory is ISwapFactory, SwapFactoryView {
         emit Take(_params.create_args.maker, _params.maker_nonce, _params);
     }
 
+    /// @notice Cancel the swap, returns assets to maker
+    /// @notice Only maker can call this function
     function bail(
         Params memory _params
     )
@@ -78,6 +86,7 @@ contract SwapFactory is ISwapFactory, SwapFactoryView {
         emit Bail(_params.create_args.maker, _params.maker_nonce, _params);
     }
 
+    /// @notice Emit swap parameters for peer discovery
     function publish(Params memory _params) external {
         emit Publish(_params.create_args.maker, _params.maker_nonce, _params);
     }
