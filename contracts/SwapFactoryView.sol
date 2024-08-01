@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {Lot, Params, ISwapFactory, IERC20, IERC721} from "./Common.sol";
 import {Swap} from "./Swap.sol";
 
-contract SwapFactoryView {
+abstract contract SwapFactoryView {
     // VIEW
     function calculateSwapAddress(
         Params memory _params

@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "clean": "rm -rf cache artifacts typechain-types",
+    "test": "npx hardhat test test/test.ts"
+  },
   "dependencies": {
     "@typescript-eslint/eslint-plugin": "^7.17.0",
     "@typescript-eslint/parser": "^7.17.0",
