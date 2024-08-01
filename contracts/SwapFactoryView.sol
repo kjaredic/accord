@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
-pragma solidity ^0.8.24;
+pragma solidity 0.8.18;
 
 import {Lot, Params, ISwapFactory, IERC20, IERC721} from "./Common.sol";
 import {Swap} from "./Swap.sol";
