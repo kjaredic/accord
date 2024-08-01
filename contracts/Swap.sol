@@ -143,7 +143,8 @@ contract Swap {
         address[] memory _erc721,
         uint256[] memory _ids
     ) internal {
-        for (uint256 i; i < _erc721.length; i++) {
+        uint256 len = _erc721.length < _ids.length ? _erc721.length : _ids.length;
+        for (uint256 i; i < len; i++) {
             address owner = IERC721(_erc721[i]).ownerOf(_ids[i]);
             if (owner != address(this)) continue;
             bytes memory payload = abi.encodeWithSelector(
