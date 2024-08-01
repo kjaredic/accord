@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Lot, Params, ISwapFactory, IERC20, IERC721} from "./Common.sol";
-import {TransientDeployProxy} from "./TransientDeployProxy.sol";
+import {Swap} from "./Swap.sol";
 
 contract SwapFactoryView {
     // VIEW
@@ -10,35 +10,29 @@ contract SwapFactoryView {
         Params memory _params
     ) public view returns (address) {
         bytes32 create2_salt = keccak256(abi.encode(_params));
-        bytes memory deploy_proxy_creationcode = type(TransientDeployProxy)
+        bytes memory swap_creationcode = type(Swap)
             .creationCode;
-        bytes memory deploy_proxy_initcode = abi.encodePacked(
-            deploy_proxy_creationcode,
+        bytes memory swap_initcode = abi.encodePacked(
+            swap_creationcode,
             abi.encode(_params.create_args)
         );
 
         // create2 address
-        bytes32 raw_proxy_digest = keccak256(
+        bytes32 digest = keccak256(
             abi.encodePacked(
                 hex"ff",
                 address(this),
                 create2_salt,
-                keccak256(deploy_proxy_initcode)
+                keccak256(swap_initcode)
             )
         );
-        address deploy_proxy_address = address(uint160(uint(raw_proxy_digest)));
+        address swap_address = address(uint160(uint(digest)));
 
-        // create address
-        bytes32 raw_swap_digest = keccak256(
-            abi.encodePacked(hex"d694", deploy_proxy_address, hex"01")
-        );
-        // hex"d694" is the RLP header for bytes20
-        // hex"01" will always be the nonce of a new address
-        // coincidentally this also prevents nonce reuse but isn't relied upon
-        return address(uint160(uint(raw_swap_digest)));
+        return swap_address;
     }
 
     function getPendingLots(
+        address _taker,
         Params memory _params
     )
         external
@@ -46,7 +40,7 @@ contract SwapFactoryView {
         returns (Lot memory pendingMakerLot, Lot memory pendingTakerLot)
     {
         pendingMakerLot = getPendingMakerLot(_params);
-        pendingTakerLot = getPendingTakerLot(_params);
+        pendingTakerLot = getPendingTakerLot(_taker, _params);
     }
 
     function getPendingMakerLot(
@@ -114,6 +108,7 @@ contract SwapFactoryView {
     }
 
     function getPendingTakerLot(
+        address _taker,
         Params memory _params
     ) public view returns (Lot memory pendingTakerLot) {
         Lot memory taker_lot = _params.create_args.taker_lot;
@@ -122,7 +117,7 @@ contract SwapFactoryView {
         uint256 taker_erc20_count = 0;
         for (uint256 i; i < taker_lot.erc20.length; i++) {
             uint256 erc20_balance = IERC20(taker_lot.erc20[i]).allowance(
-                _params.create_args.taker,
+                _taker,
                 swap_address
             );
             uint256 remaining = erc20_balance > taker_lot.erc20_amounts[i]
@@ -148,7 +143,7 @@ contract SwapFactoryView {
         }
 
         pendingTakerLot = Lot(
-            0,
+            taker_lot.eth_amount,
             new address[](taker_erc20_count),
             new uint256[](taker_erc20_count),
             new address[](taker_erc721_count),

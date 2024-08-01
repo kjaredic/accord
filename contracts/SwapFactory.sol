@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Params, ISwapFactory} from "./Common.sol";
-import {TransientDeployProxy} from "./TransientDeployProxy.sol";
+import {Swap} from "./Swap.sol";
 import {SwapFactoryView} from "./SwapFactoryView.sol";
 
 
@@ -49,11 +49,10 @@ contract SwapFactory is ISwapFactory, SwapFactoryView {
         payable
         spendNonce(_params.create_args.maker, _params.maker_nonce)
     {
-        address taker = _params.create_args.taker;
+        address taker = _params.taker;
         uint256 maker_deadline = _params.maker_deadline;
 
         if (taker == address(0) || (msg.sender) == taker) {
-            taker = msg.sender;
             if (maker_deadline != 0 && maker_deadline < block.timestamp) {
                 revert MakerDeadlineExpired();
             }
@@ -64,7 +63,7 @@ contract SwapFactory is ISwapFactory, SwapFactoryView {
             revert Unauthorized();
         }
 
-        _deployCreateProxy(_params);
+        _deploySwapContract(_params);
         emit Take(_params.create_args.maker, _params.maker_nonce, _params);
     }
 
@@ -74,7 +73,6 @@ contract SwapFactory is ISwapFactory, SwapFactoryView {
         Params memory _params
     )
         external
-        payable
         spendNonce(_params.create_args.maker, _params.maker_nonce)
     {
         address maker = _params.create_args.maker;
@@ -82,7 +80,7 @@ contract SwapFactory is ISwapFactory, SwapFactoryView {
             revert Unauthorized();
         }
 
-        _deployCreateProxy(_params);
+        _deploySwapContract(_params);
         emit Bail(_params.create_args.maker, _params.maker_nonce, _params);
     }
 
@@ -92,9 +90,9 @@ contract SwapFactory is ISwapFactory, SwapFactoryView {
     }
 
     // INTERNAL
-    function _deployCreateProxy(Params memory _params) internal {
+    function _deploySwapContract(Params memory _params) internal {
         bytes32 create2_salt = keccak256(abi.encode(_params));
-        new TransientDeployProxy{salt: create2_salt, value: msg.value}(
+        new Swap{salt: create2_salt, value: msg.value}(
             _params.create_args
         );
     }

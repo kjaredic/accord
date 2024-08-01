@@ -11,7 +11,6 @@ struct Lot {
 
 struct CreateArgs {
     address maker;
-    address taker;
     Lot maker_lot;
     Lot taker_lot;
 }
@@ -19,6 +18,7 @@ struct CreateArgs {
 struct Params {
     uint256 maker_nonce;
     uint256 maker_deadline;
+    address taker;
     CreateArgs create_args;
 }
 
