@@ -32,7 +32,7 @@ I'm not a cryptographer, but as far as I know this problem is hard.
 
 ## Security notice
 
-This protocol in no way curates the swapped assets. It's possible to brick both the execution and calcelation of a swap. However only the maker can brick himself out of ETH, all other failures result in an invalid and non executable swap. It's at the makers and takers behest to review the swapped assets before spending gas on approvals.
+This protocol in no way curates the swapped assets. It's possible to brick both the execution and cancelation of a swap. However only the maker can brick himself out of ETH, all other failures result in an invalid and non executable swap. It's at the makers and takers behest to review the swapped assets before spending gas on approvals.
 
 ## Gas usage
 
