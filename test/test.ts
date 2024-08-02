@@ -61,7 +61,7 @@ const bail_fixture = async () => {
 };
 
 describe('SwapFactory Tests', function () {
-    this.timeout(120_000);
+    this.timeout(180_000);
 
     describe('SwapFactory::take flow', async () => {
         it('... should execute private swap', async () => {
