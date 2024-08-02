@@ -41,3 +41,7 @@ This protocol uses N approvals + N transfers with an overhead of ~140k gas (abou
 There are other costs not considered like memory expansion, which does add up with a large N.
 
 The gas cost of maker canceling the swap is fixed at around the same ~140k gas.
+
+Note: N is limited by the contract size constraint (24KB) as swap parameters are part of Swap initcode.
+With the static part of Swap initcode being less than 4KB, and each transfer requiring 2 slots (64B) in calldata, max N = 64.
+Major changes would be needed to support bigger values of N.
