@@ -16,7 +16,7 @@ Clone this repository and run:
 
 ## Technical overview
 
-The principle mechanism used to create swaps is deterministic contract deployment.
+The principal mechanism used to create swaps is deterministic contract deployment.
 This has some advantages, as well as some disadvantages as we will later see.
 
 The main entrypoint is the SwapFactory contract, with the user facing take() and bail() functions.
