@@ -91,7 +91,7 @@ describe('SwapFactory Tests', function () {
             };
         });
 
-        it('... should revert on missing approval', async () => {
+        it('... should revert on missing taker approval', async () => {
             const { swapObj, maker, taker, random } = await loadFixture(base_fixture);
 
             await swapObj.approveMaker(maker);
@@ -122,7 +122,38 @@ describe('SwapFactory Tests', function () {
             ).to.be.reverted;
         });
 
-        it('... should revert on missing assets', async () => {
+        it('... should revert on missing maker approval', async () => {
+            const { swapObj, maker, taker, random } = await loadFixture(base_fixture);
+
+            await swapObj.approveMaker(maker);
+            await swapObj.approveTaker(taker);
+
+            const taker_deadline = 0n;
+            const snapshot = await takeSnapshot();
+            // revoke single erc20 approval
+            {
+                const token = swapObj.params.create_args.maker_lot.erc20[0].toString();
+                const erc20 = await ethers.getContractAt('IERC20', token);
+                erc20.connect(maker).approve(calculateSwapAddress(swapObj), 0n);
+            }
+            await expect(
+                swapObj.take(taker, taker_deadline), 'Taker managed to take',
+            ).to.be.reverted;
+
+            await snapshot.restore();
+            // revoke single erc721 approval
+            {
+                const token = swapObj.params.create_args.maker_lot.erc721[0].toString();
+                const id = swapObj.params.create_args.maker_lot.erc721_ids[0];
+                const erc721 = await ethers.getContractAt('IERC721', token);
+                erc721.connect(maker).approve(random.address, id);
+            }
+            await expect(
+                swapObj.take(taker, taker_deadline), 'Taker managed to take',
+            ).to.be.reverted;
+        });
+
+        it('... should revert on missing taker assets', async () => {
             const { swapObj, maker, taker, random } = await loadFixture(base_fixture);
 
             await swapObj.approveMaker(maker);
@@ -147,6 +178,37 @@ describe('SwapFactory Tests', function () {
                 const id = swapObj.params.create_args.taker_lot.erc721_ids[0];
                 const erc721 = await ethers.getContractAt('IERC721', token);
                 erc721.connect(taker).transferFrom(taker.address, random.address, id);
+            }
+            await expect(
+                swapObj.take(taker, taker_deadline), 'Taker managed to take',
+            ).to.be.reverted;
+        });
+
+        it('... should revert on missing maker assets', async () => {
+            const { swapObj, maker, taker, random } = await loadFixture(base_fixture);
+
+            await swapObj.approveMaker(maker);
+            await swapObj.approveTaker(taker);
+
+            const taker_deadline = 0n;
+            const snapshot = await takeSnapshot();
+            // lose single erc20
+            {
+                const token = swapObj.params.create_args.maker_lot.erc20[0].toString();
+                const erc20 = await ethers.getContractAt('IERC20', token);
+                erc20.connect(maker).transfer(random, 1n);
+            }
+            await expect(
+                swapObj.take(taker, taker_deadline), 'Taker managed to take',
+            ).to.be.reverted;
+
+            await snapshot.restore();
+            // lose single erc721
+            {
+                const token = swapObj.params.create_args.maker_lot.erc721[0].toString();
+                const id = swapObj.params.create_args.maker_lot.erc721_ids[0];
+                const erc721 = await ethers.getContractAt('IERC721', token);
+                erc721.connect(maker).transferFrom(maker.address, random.address, id);
             }
             await expect(
                 swapObj.take(taker, taker_deadline), 'Taker managed to take',
