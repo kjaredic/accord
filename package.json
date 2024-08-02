@@ -4,6 +4,7 @@
     "test": "npx hardhat test test/test.ts"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^5.0.2",
     "@typescript-eslint/eslint-plugin": "^7.17.0",
     "@typescript-eslint/parser": "^7.17.0",
     "eslint": "^9.8.0",

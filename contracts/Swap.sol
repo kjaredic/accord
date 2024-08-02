@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
-pragma solidity 0.8.18;
+pragma solidity 0.8.24;
 
-import {CreateArgs, ISwapFactory, IERC20, IERC721} from "./Common.sol";
+import {CreateArgs, ISwapFactory} from "./Common.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title Swap finalization contract
 /// @notice if invoker is swap maker, will cancel the swap, otherwise will execute the swap
 contract Swap {
+    using SafeERC20 for IERC20;
+
     constructor(CreateArgs memory _create_args) payable {
         address invoker = ISwapFactory(msg.sender).invoker();
 
@@ -33,18 +38,18 @@ contract Swap {
         );
     }
 
-    function _take(address taker, CreateArgs memory _create_args) internal {
+    function _take(address _taker, CreateArgs memory _create_args) internal {
         // taker gets maker_lot or reverts
-        payable(taker).transfer(_create_args.maker_lot.eth_amount);
+        payable(_taker).transfer(_create_args.maker_lot.eth_amount);
 
         _pushERC20(
-            taker,
+            _taker,
             _create_args.maker_lot.erc20,
             _create_args.maker_lot.erc20_amounts
         );
 
         _pushERC721(
-            taker,
+            _taker,
             _create_args.maker_lot.erc721,
             _create_args.maker_lot.erc721_ids
         );
@@ -53,14 +58,14 @@ contract Swap {
         payable(_create_args.maker).transfer(_create_args.taker_lot.eth_amount);
 
         _pullERC20(
-            taker,
+            _taker,
             _create_args.maker,
             _create_args.taker_lot.erc20,
             _create_args.taker_lot.erc20_amounts
         );
 
         _pullERC721(
-            taker,
+            _taker,
             _create_args.maker,
             _create_args.taker_lot.erc721,
             _create_args.taker_lot.erc721_ids
@@ -73,10 +78,7 @@ contract Swap {
         uint256[] memory _amounts
     ) internal {
         for (uint256 i; i < _erc20.length; i++) {
-            IERC20(_erc20[i]).transfer(
-                _to,
-                _amounts[i]
-            );
+            IERC20(_erc20[i]).safeTransfer(_to, _amounts[i]);
         }
     }
 
@@ -87,11 +89,7 @@ contract Swap {
         uint256[] memory _amounts
     ) internal {
         for (uint256 i; i < _erc20.length; i++) {
-            IERC20(_erc20[i]).transferFrom(
-                _from,
-                _to,
-                _amounts[i]
-            );
+            IERC20(_erc20[i]).safeTransferFrom(_from, _to, _amounts[i]);
         }
     }
 
@@ -101,11 +99,7 @@ contract Swap {
         uint256[] memory _ids
     ) internal {
         for (uint256 i; i < _erc721.length; i++) {
-            IERC721(_erc721[i]).transferFrom(
-                address(this),
-                _to,
-                _ids[i]
-            );
+            IERC721(_erc721[i]).transferFrom(address(this), _to, _ids[i]);
         }
     }
 
@@ -116,11 +110,7 @@ contract Swap {
         uint256[] memory _ids
     ) internal {
         for (uint256 i; i < _erc721.length; i++) {
-            IERC721(_erc721[i]).transferFrom(
-                _from,
-                _to,
-                _ids[i]
-            );
+            IERC721(_erc721[i]).transferFrom(_from, _to, _ids[i]);
         }
     }
 
@@ -143,7 +133,10 @@ contract Swap {
         address[] memory _erc721,
         uint256[] memory _ids
     ) internal {
-        uint256 len = _erc721.length < _ids.length ? _erc721.length : _ids.length;
+        uint256 len = _erc721.length < _ids.length
+            ? _erc721.length
+            : _ids.length;
+
         for (uint256 i; i < len; i++) {
             address owner = IERC721(_erc721[i]).ownerOf(_ids[i]);
             if (owner != address(this)) continue;

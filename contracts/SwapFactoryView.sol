@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
-pragma solidity 0.8.18;
+pragma solidity 0.8.24;
 
-import {Lot, Params, ISwapFactory, IERC20, IERC721} from "./Common.sol";
+import {Lot, Params, ISwapFactory} from "./Common.sol";
 import {Swap} from "./Swap.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 abstract contract SwapFactoryView {
     // VIEW

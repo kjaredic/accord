@@ -31,7 +31,7 @@ export async function prankERC20Transfer({
         const events = await erc20.queryFilter(erc20_transfer_event, fromBlock, toBlock);
 
         events.slice(-count * count).forEach((e) => {
-            const { from, to, amount } = e.args;
+            const { from, to, value: amount } = e.args;
 
             if (to === token || to === ZeroAddress) {
                 return;
@@ -94,7 +94,7 @@ export async function prankERC721Transfer({
         const events = await erc721.queryFilter(erc721_transfer_event, fromBlock, toBlock);
 
         events.slice(-count * count).forEach((e) => {
-            const { to, id } = e.args;
+            const { to, tokenId: id } = e.args;
             if (to === token || to === ZeroAddress) {
                 id_book.delete(id);
             } else {
