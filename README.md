@@ -4,7 +4,9 @@ Accord is a swap protocol that enables two parties to swap arbitrary lots of ass
 Each swap has it's own address, and is uniquely defined by the parties, lots and a nonce.
 
 There are two roles in a swap, one is the maker role, the other is the taker.
-They make their assets available via approval, and in case the maker is offering native ETH, a transfer to the swap address. If all balances, approvals and swap input data are correct the taker and only the taker can choose to execute the swap. At any point before this, the maker can choose to cancel the swap and pull his ETH (if any).
+They make their assets available via approval, and in case the maker is offering native ETH, a transfer to the swap address. If all balances, approvals and swap input data are correct, the taker and only the taker can choose to execute the swap, sending ETH (if any is offered) with the call. At any point before this, the maker can choose to cancel the swap and pull his ETH (if any).
+
+Notice: The swap can be disabled from happening by either party. They only need to remove a single approval. If maker is not offering ETH this is preferable to canceling the swap. Also the taker doesn't really have to do this ever as he can simply choose not to execute.
 
 ## Running tests
 
@@ -31,3 +33,11 @@ I'm not a cryptographer, but as far as I know this problem is hard.
 ## Security notice
 
 This protocol in no way curates the swapped assets. It's possible to brick both the execution and calcelation of a swap. However only the maker can brick himself out of ETH, all other failures result in an invalid and non executable swap. It's at the makers and takers behest to review the swapped assets before spending gas on approvals.
+
+## Gas usage
+
+For N assets to be swapped between two parties the theoretical best solution would be N transfers.
+This protocol uses N approvals + N transfers with an overhead of ~140k gas (about the same as two erc20 transfers). This cost isn't evenly split between the parties, they each pay for their own approvals, however, the taker pays for all the transfers and the overhead.
+There are other costs not considered like memory expansion, which does add up with a large N.
+
+The gas cost of maker canceling the swap is fixed at around the same ~140k gas.
