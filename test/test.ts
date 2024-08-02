@@ -130,7 +130,7 @@ describe('SwapFactory Tests', function () {
 
             const taker_deadline = 0n;
             const snapshot = await takeSnapshot();
-            // loose single erc20
+            // lose single erc20
             {
                 const token = swapObj.params.create_args.taker_lot.erc20[0].toString();
                 const erc20 = await ethers.getContractAt('IERC20', token);
@@ -141,7 +141,7 @@ describe('SwapFactory Tests', function () {
             ).to.be.reverted;
 
             await snapshot.restore();
-            // loose single erc721
+            // lose single erc721
             {
                 const token = swapObj.params.create_args.taker_lot.erc721[0].toString();
                 const id = swapObj.params.create_args.taker_lot.erc721_ids[0];

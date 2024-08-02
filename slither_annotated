@@ -1,0 +1,36 @@
+'npx hardhat clean' running (wd: /home/bulki/source/local/accord)
+'npx hardhat clean --global' running (wd: /home/bulki/source/local/accord)
+'npx hardhat compile --force' running (wd: /home/bulki/source/local/accord)
+INFO:Detectors:
+Swap._bail(CreateArgs) (contracts/Swap.sol#30-34) sends eth to arbitrary user
+	Dangerous calls:
+	- address(_create_args.maker).transfer(address(this).balance) (contracts/Swap.sol#33)
+Swap._take(address,CreateArgs) (contracts/Swap.sol#36-70) sends eth to arbitrary user
+	Dangerous calls:
+	- address(_taker).transfer(_create_args.maker_lot.eth_amount) (contracts/Swap.sol#38)
+	- address(_create_args.maker).transfer(_create_args.taker_lot.eth_amount) (contracts/Swap.sol#55)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#functions-that-send-ether-to-arbitrary-destinations
+#### RETORT - Swap is non reentrant, we can give up execution context here
+INFO:Detectors:
+Reentrancy in SwapFactory.bail(Params) (contracts/SwapFactory.sol#73-86):
+	External calls:
+	- _deploySwapContract(_params) (contracts/SwapFactory.sol#84)
+		- new Swap{value: msg.value,salt: create2_salt}(_params.create_args) (contracts/SwapFactory.sol#96-98)
+	Event emitted after the call(s):
+	- Bail(_params.create_args.maker,_params.maker_nonce,_params) (contracts/SwapFactory.sol#85)
+Reentrancy in SwapFactory.take(uint256,Params) (contracts/SwapFactory.sol#45-69):
+	External calls:
+	- _deploySwapContract(_params) (contracts/SwapFactory.sol#67)
+		- new Swap{value: msg.value,salt: create2_salt}(_params.create_args) (contracts/SwapFactory.sol#96-98)
+	Event emitted after the call(s):
+	- Take(_params.create_args.maker,_params.maker_nonce,_params) (contracts/SwapFactory.sol#68)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+### RETORT - Swap creation is non reentrant, so the events are predetermined
+INFO:Detectors:
+SwapFactory.take(uint256,Params) (contracts/SwapFactory.sol#45-69) uses timestamp for comparisons
+	Dangerous comparisons:
+	- maker_deadline != 0 && maker_deadline < block.timestamp (contracts/SwapFactory.sol#57)
+	- _taker_deadline != 0 && _taker_deadline < block.timestamp (contracts/SwapFactory.sol#60)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+### RETORT - deadline is only expected to work roughly and is not critical fpr use-case
+INFO:Slither:./ analyzed (10 contracts with 67 detectors), 5 result(s) found

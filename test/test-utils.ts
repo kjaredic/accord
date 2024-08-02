@@ -243,7 +243,11 @@ async function getLotAssetBalance(user: string, lot: LotStruct) {
     const eth_balance = await ethers.provider.getBalance(user);
 
     const erc20_balance = await Promise.all(
-        lot.erc20.map((token) => ethers.getContractAt('IERC20', token.toString()).then((c) => c.balanceOf(user))),
+        lot.erc20.map(
+            (token) => ethers
+                .getContractAt('IERC20', token.toString())
+                .then((c) => c.balanceOf(user)),
+        ),
     );
 
     const erc721_owners = await Promise.all(

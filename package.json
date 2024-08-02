@@ -1,7 +1,8 @@
 {
   "scripts": {
     "clean": "rm -rf cache artifacts typechain-types",
-    "test": "npx hardhat test test/test.ts"
+    "test": "npx hardhat test test/test.ts",
+    "slither": "slither --exclude-informational ./ &> slither_output"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2",
