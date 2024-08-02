@@ -7,7 +7,8 @@ import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title Swap finalization contract
-/// @notice if invoker is swap maker, will cancel the swap, otherwise will execute the swap
+/// @notice If invoker is swap maker, will cancel the swap, otherwise will execute the swap
+/// @notice Will revert on invalid input, missing approvals/balances and bricked maker recieve function
 contract Swap {
     using SafeERC20 for IERC20;
 

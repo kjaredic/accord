@@ -1,10 +1,10 @@
 import { ethers } from 'hardhat';
-import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
+import { loadFixture, takeSnapshot } from '@nomicfoundation/hardhat-toolbox/network-helpers';
 import { ParamsStruct } from '../typechain-types/contracts/SwapFactoryView';
 import { VirtualSwapObject } from '../sdk';
 import { expect } from 'chai';
 import { generateBailBalanceCheck, generateBalanceCheck, generateTestCase } from './test-utils';
-import { printParams } from '../sdk/utils';
+import { calculateSwapAddress, printParams } from '../sdk/utils';
 import { ZeroAddress } from 'ethers';
 
 const base_fixture = async () => {
@@ -89,6 +89,68 @@ describe('SwapFactory Tests', function () {
                 take_tx,
                 ...fixture_params,
             };
+        });
+
+        it('... should revert on missing approval', async () => {
+            const { swapObj, maker, taker, random } = await loadFixture(base_fixture);
+
+            await swapObj.approveMaker(maker);
+            await swapObj.approveTaker(taker);
+
+            const taker_deadline = 0n;
+            const snapshot = await takeSnapshot();
+            // revoke single erc20 approval
+            {
+                const token = swapObj.params.create_args.taker_lot.erc20[0].toString();
+                const erc20 = await ethers.getContractAt('IERC20', token);
+                erc20.connect(taker).approve(calculateSwapAddress(swapObj), 0n);
+            }
+            await expect(
+                swapObj.take(taker, taker_deadline), 'Taker managed to take',
+            ).to.be.reverted;
+
+            await snapshot.restore();
+            // revoke single erc721 approval
+            {
+                const token = swapObj.params.create_args.taker_lot.erc721[0].toString();
+                const id = swapObj.params.create_args.taker_lot.erc721_ids[0];
+                const erc721 = await ethers.getContractAt('IERC721', token);
+                erc721.connect(taker).approve(random.address, id);
+            }
+            await expect(
+                swapObj.take(taker, taker_deadline), 'Taker managed to take',
+            ).to.be.reverted;
+        });
+
+        it('... should revert on missing assets', async () => {
+            const { swapObj, maker, taker, random } = await loadFixture(base_fixture);
+
+            await swapObj.approveMaker(maker);
+            await swapObj.approveTaker(taker);
+
+            const taker_deadline = 0n;
+            const snapshot = await takeSnapshot();
+            // loose single erc20
+            {
+                const token = swapObj.params.create_args.taker_lot.erc20[0].toString();
+                const erc20 = await ethers.getContractAt('IERC20', token);
+                erc20.connect(taker).transfer(random, 1n);
+            }
+            await expect(
+                swapObj.take(taker, taker_deadline), 'Taker managed to take',
+            ).to.be.reverted;
+
+            await snapshot.restore();
+            // loose single erc721
+            {
+                const token = swapObj.params.create_args.taker_lot.erc721[0].toString();
+                const id = swapObj.params.create_args.taker_lot.erc721_ids[0];
+                const erc721 = await ethers.getContractAt('IERC721', token);
+                erc721.connect(taker).transferFrom(taker.address, random.address, id);
+            }
+            await expect(
+                swapObj.take(taker, taker_deadline), 'Taker managed to take',
+            ).to.be.reverted;
         });
 
         it('... should revert on nonce reuse', async () => {

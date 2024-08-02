@@ -104,6 +104,10 @@ export class VirtualSwapObject {
         return this._approve(signer, taker_lot, swap_address);
     }
 
+    calculateSwapAddress() {
+        return calculateSwapAddress(this);
+    }
+
     private async _approve(signer: HardhatEthersSigner, lot: LotStruct, swap_address: string) {
         await Promise.all(lot.erc20.map(
             async (e, i) => {

@@ -7,6 +7,7 @@ There are two roles in a swap, one is the maker role, the other is the taker.
 They make their assets available via approval, and in case the maker is offering native ETH, a transfer to the swap address. If all balances, approvals and swap input data are correct the taker and only the taker can choose to execute the swap. At any point before this, the maker can choose to cancel the swap and pull his ETH (if any).
 
 ## Running tests
+
 Clone this repository and run:
 
 `$ yarn && yarn test`

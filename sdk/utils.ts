@@ -1,6 +1,6 @@
 import SwapAbi from '../artifacts/contracts/Swap.sol/Swap.json';
 import { ethers } from 'hardhat';
-import { ParamsStruct, CreateArgsStruct } from '../typechain-types/SwapFactory';
+import { ParamsStruct, CreateArgsStruct } from '../typechain-types/contracts/SwapFactoryView';
 import { ZeroAddress } from 'ethers';
 import { erc20_list, erc721_list } from '../test/test-data';
 

@@ -7,8 +7,9 @@ import {SwapFactoryView} from "./SwapFactoryView.sol";
 
 
 /// @title Contract for executing/canceling swaps
-/// @notice Maker needs to transfer assets to the calculated swap address
-/// @notice Taker needs to approve assets for the calculated swap address
+/// @notice Maker and taker need to approve assets for the calculated swap address
+/// @notice Maker needs to send ETH (if offering) to the calculated swap address
+/// @notice Taker needs to send ETH (if offering) WITH the take() function
 contract SwapFactory is ISwapFactory, SwapFactoryView {
     // STORAGE
     address public invoker;
