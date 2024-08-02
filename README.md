@@ -43,5 +43,9 @@ There are other costs not considered like memory expansion, which does add up wi
 The gas cost of maker canceling the swap is fixed at around the same ~140k gas.
 
 Note: N is limited by the contract size constraint (24KB) as swap parameters are part of Swap initcode.
-With the static part of Swap initcode being less than 4KB, and each transfer requiring 2 slots (64B) in calldata, max N = 64.
-Major changes would be needed to support bigger values of N.
+With the static part of Swap initcode being less than 4KB, and each transfer requiring 2 slots (64B) in calldata, max N = 320.
+
+This number of transfers would be near the gas block limit (320 * 60k gas = 20mil gas).
+For ERC721 transfers it would be over the limit (320 * 120k gas = 40mil gas).
+
+Major changes would be required to allow for larger N.
