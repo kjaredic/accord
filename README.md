@@ -4,13 +4,12 @@ Accord is a swap protocol that enables two parties to swap arbitrary lots of ass
 Each swap has it's own address, and is uniquely defined by the parties, lots and a nonce.
 
 There are two roles in a swap, one is the maker role, the other is the taker.
-The maker role commits assets by sending them to the swap address, which he can withdraw at any point before the swap executes, canceling the swap.
-The taker role makes his assets available via approvals to the swap address, and can execute the swap at any point before the maker cancels the swap.
+They make their assets available via approval, and in case the maker is offering native ETH, a transfer to the swap address. If all balances, approvals and swap input data are correct the taker and only the taker can choose to execute the swap. At any point before this, the maker can choose to cancel the swap and pull his ETH (if any).
 
 ## Running tests
 Clone this repository and run:
 
-`$ yarn && yarn run test`
+`$ yarn && yarn test`
 
 ## Technical overview
 
@@ -28,14 +27,6 @@ The soundness of this protocol relies on the difficulty of finding different val
 
 I'm not a cryptographer, but as far as I know this problem is hard.
 
-## Tradeoffs
+## Security notice
 
-- Advantages:
-    - Nonreentrant - can't callback to contract in creation
-    - Asset isolation
-    - Dangling approvals can be ignored once the contract executes
-    - No overhead for swap seeding (maker transfers, taker approvals)
-- Disatvantages:
-    - No on-chain validation for swap seeding
-    - Complexity and reliance on sdk
-    - Limited discoverability between parties
+This protocol in no way curates the swapped assets. It's possible to brick both the execution and calcelation of a swap. However only the maker can brick himself out of ETH, all other failures result in an invalid and non executable swap. It's at the makers and takers behest to review the swapped assets before spending gas on approvals.

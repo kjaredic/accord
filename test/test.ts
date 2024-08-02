@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { loadFixture } from '@nomicfoundation/hardhat-toolbox/network-helpers';
-import { ParamsStruct } from '../typechain-types/SwapFactory';
+import { ParamsStruct } from '../typechain-types/contracts/SwapFactoryView';
 import { VirtualSwapObject } from '../sdk';
 import { expect } from 'chai';
 import { generateBailBalanceCheck, generateBalanceCheck, generateTestCase } from './test-utils';
@@ -31,8 +31,8 @@ const take_fixture = async () => {
     const fixture_params = await loadFixture(base_fixture);
     const taker_deadline = 0n;
 
-    await fixture_params.swapObj.transfer(fixture_params.maker);
-    await fixture_params.swapObj.approve(fixture_params.taker);
+    await fixture_params.swapObj.approveMaker(fixture_params.maker);
+    await fixture_params.swapObj.approveTaker(fixture_params.taker);
 
     const balanceChecker = await generateBalanceCheck(fixture_params.taker.address, fixture_params.swapObj.params);
     const take_tx = await fixture_params.swapObj.take(fixture_params.taker, taker_deadline);
@@ -47,8 +47,10 @@ const take_fixture = async () => {
 const bail_fixture = async () => {
     const fixture_params = await loadFixture(base_fixture);
 
-    await fixture_params.swapObj.transfer(fixture_params.maker);
-    const balanceChecker = await generateBailBalanceCheck(fixture_params.swapObj.params);
+    await fixture_params.swapObj.approveMaker(fixture_params.maker);
+    await fixture_params.swapObj.approveTaker(fixture_params.taker);
+    const balanceChecker = await generateBailBalanceCheck(fixture_params.taker.address, fixture_params.swapObj.params);
+
     const bail_tx = await fixture_params.swapObj.bail(fixture_params.maker);
     await balanceChecker(bail_tx);
 
@@ -76,8 +78,8 @@ describe('SwapFactory Tests', function () {
             const publicSwapParams = publicSwapObj.params as ParamsStruct;
             publicSwapParams.taker = ZeroAddress;
 
-            await publicSwapObj.transfer(maker);
-            await publicSwapObj.approve(taker);
+            await publicSwapObj.approveMaker(maker);
+            await publicSwapObj.approveTaker(taker);
 
             const balanceChecker = await generateBalanceCheck(taker.address, publicSwapObj.params);
             const take_tx = await publicSwapObj.take(taker, taker_deadline);

@@ -25,30 +25,26 @@ contract Swap {
         }
     }
 
+    // INTERNAL
     function _bail(CreateArgs memory _create_args) internal {
-        // allowed to fail so that we don't brick other withdrawals
-        _create_args.maker.call{value: address(this).balance}("");
-
-        _pushOwnedERC20(_create_args.maker, _create_args.maker_lot.erc20);
-
-        _pushOwnedERC721(
-            _create_args.maker,
-            _create_args.maker_lot.erc721,
-            _create_args.maker_lot.erc721_ids
-        );
+        // can revert, maker can brick his own eth if he so chooses
+        // the alternative is to lock the eth forever
+        payable(_create_args.maker).transfer(address(this).balance);
     }
 
     function _take(address _taker, CreateArgs memory _create_args) internal {
         // taker gets maker_lot or reverts
         payable(_taker).transfer(_create_args.maker_lot.eth_amount);
 
-        _pushERC20(
+        _pullERC20(
+            _create_args.maker,
             _taker,
             _create_args.maker_lot.erc20,
             _create_args.maker_lot.erc20_amounts
         );
 
-        _pushERC721(
+        _pullERC721(
+            _create_args.maker,
             _taker,
             _create_args.maker_lot.erc721,
             _create_args.maker_lot.erc721_ids
@@ -72,16 +68,6 @@ contract Swap {
         );
     }
 
-    function _pushERC20(
-        address _to,
-        address[] memory _erc20,
-        uint256[] memory _amounts
-    ) internal {
-        for (uint256 i; i < _erc20.length; i++) {
-            IERC20(_erc20[i]).safeTransfer(_to, _amounts[i]);
-        }
-    }
-
     function _pullERC20(
         address _from,
         address _to,
@@ -93,16 +79,6 @@ contract Swap {
         }
     }
 
-    function _pushERC721(
-        address _to,
-        address[] memory _erc721,
-        uint256[] memory _ids
-    ) internal {
-        for (uint256 i; i < _erc721.length; i++) {
-            IERC721(_erc721[i]).transferFrom(address(this), _to, _ids[i]);
-        }
-    }
-
     function _pullERC721(
         address _from,
         address _to,
@@ -111,43 +87,6 @@ contract Swap {
     ) internal {
         for (uint256 i; i < _erc721.length; i++) {
             IERC721(_erc721[i]).transferFrom(_from, _to, _ids[i]);
-        }
-    }
-
-    function _pushOwnedERC20(address _to, address[] memory _erc20) internal {
-        for (uint256 i; i < _erc20.length; i++) {
-            uint256 balance = IERC20(_erc20[i]).balanceOf(address(this));
-            if (balance == 0) continue;
-            bytes memory payload = abi.encodeWithSelector(
-                IERC20.transfer.selector,
-                _to,
-                balance
-            );
-            // allowed to fail so that we don't brick other withdrawals
-            _erc20[i].call(payload);
-        }
-    }
-
-    function _pushOwnedERC721(
-        address _to,
-        address[] memory _erc721,
-        uint256[] memory _ids
-    ) internal {
-        uint256 len = _erc721.length < _ids.length
-            ? _erc721.length
-            : _ids.length;
-
-        for (uint256 i; i < len; i++) {
-            address owner = IERC721(_erc721[i]).ownerOf(_ids[i]);
-            if (owner != address(this)) continue;
-            bytes memory payload = abi.encodeWithSelector(
-                IERC721.transferFrom.selector,
-                address(this),
-                _to,
-                _ids[i]
-            );
-            // allowed to fail so that we don't brick other withdrawals
-            _erc721[i].call(payload);
         }
     }
 }

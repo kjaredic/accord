@@ -4,7 +4,7 @@ import { ContractTransactionReceipt, ZeroAddress } from "ethers";
 import { ethers } from "hardhat";
 import { erc20_list, erc721_list } from "./test-data";
 import { generate_swap_params } from "../sdk/utils";
-import { ParamsStruct } from "../typechain-types/SwapFactory";
+import { LotStruct, ParamsStruct } from "../typechain-types/contracts/SwapFactoryView";
 
 export async function prankERC20Transfer({
     token,
@@ -120,15 +120,6 @@ export async function prankERC721Transfer({
     return victim_ids.map(([id]) => ({ token, id }));
 }
 
-function randomIndex(n: number) {
-    return Math.floor(Math.random() * n);
-}
-
-function randomSplitChoice<T>(arr: T[]) {
-    const split_index = 1 + randomIndex(arr.length - 1);
-    return [arr.slice(0, split_index), arr.slice(split_index)];
-}
-
 export async function generateTestCase(maker: string, taker: string, to_block: number) {
     const params = generate_swap_params();
     params.create_args.maker = maker;
@@ -161,7 +152,7 @@ export async function generateTestCase(maker: string, taker: string, to_block: n
         const maker_erc721 = maker_erc721_nested.reduce((acc, e) => [...acc, ...e], []);
 
 
-        params.create_args.maker_lot.eth_amount = Math.random() > 0.5 ? BigInt(10e18) : 0;
+        params.create_args.maker_lot.eth_amount = Math.random() > 0. ? BigInt(10e18) : 0;
         params.create_args.maker_lot.erc20 = maker_erc20.map(({ token }) => token);
         params.create_args.maker_lot.erc20_amounts = maker_erc20.map(({ amount }) => amount);
         params.create_args.maker_lot.erc721 = maker_erc721.map(({ token }) => token);
@@ -183,7 +174,7 @@ export async function generateTestCase(maker: string, taker: string, to_block: n
 
         const taker_erc721 = taker_erc721_nested.reduce((acc, e) => [...acc, ...e], []);
 
-        params.create_args.taker_lot.eth_amount = Math.random() > 0.5 ? BigInt(10e18) : 0;
+        params.create_args.taker_lot.eth_amount = Math.random() > 0. ? BigInt(10e18) : 0;
         params.create_args.taker_lot.erc20 = taker_erc20.map(({ token }) => token);
         params.create_args.taker_lot.erc20_amounts = taker_erc20.map(({ amount }) => amount);
         params.create_args.taker_lot.erc721 = taker_erc721.map(({ token }) => token);
@@ -194,91 +185,74 @@ export async function generateTestCase(maker: string, taker: string, to_block: n
 }
 
 export async function generateBalanceCheck(taker: string, params: ParamsStruct) {
-    const maker = params.create_args.maker;
-    const taker_lot = params.create_args.taker_lot;
+    const maker = params.create_args.maker.toString();
     const maker_lot = params.create_args.maker_lot;
-
-    const taker_eth_balance_before = await ethers.provider.getBalance(taker);
-    const maker_eth_balance_before = await ethers.provider.getBalance(maker);
-
-    const taker_erc20_balance_before = await Promise.all(
-        maker_lot.erc20.map((token) => ethers.getContractAt('IERC20', token.toString()).then((c) => c.balanceOf(taker))),
-    );
-    const maker_erc20_balance_before = await Promise.all(
-        taker_lot.erc20.map((token) => ethers.getContractAt('IERC20', token.toString()).then((c) => c.balanceOf(maker))),
-    );
+    const taker_lot = params.create_args.taker_lot;
+    const maker_balance_before = await getLotAssetBalance(maker, taker_lot);
+    const taker_balance_before = await getLotAssetBalance(taker, maker_lot);
 
     return async (tx: ContractTransactionReceipt) => {
         const tx_cost = tx.gasPrice * tx.gasUsed;
 
-        const taker_eth_balance_after = await ethers.provider.getBalance(taker);
-        const maker_eth_balance_after = await ethers.provider.getBalance(maker);
+        const maker_balance_after = await getLotAssetBalance(maker, taker_lot);
+        const taker_balance_after = await getLotAssetBalance(taker, maker_lot);
 
-        expect(maker_eth_balance_after - maker_eth_balance_before).to.be.eq(taker_lot.eth_amount);
-        expect(taker_eth_balance_after - taker_eth_balance_before).to.be.eq(BigInt(maker_lot.eth_amount) - BigInt(taker_lot.eth_amount) - tx_cost);
-        const taker_erc20_balance_after = await Promise.all(
-            maker_lot.erc20.map((token) => ethers.getContractAt('IERC20', token.toString()).then((c) => c.balanceOf(taker))),
-        );
-        const maker_erc20_balance_after = await Promise.all(
-            taker_lot.erc20.map((token) => ethers.getContractAt('IERC20', token.toString()).then((c) => c.balanceOf(maker))),
-        );
+        expect(maker_balance_after.eth_balance).to.be.eq(maker_balance_before.eth_balance + BigInt(taker_lot.eth_amount));
+        maker_balance_after.erc20_balance.forEach((e, i) => expect(e).to.be.eq(maker_balance_before.erc20_balance[i] + BigInt(taker_lot.erc20_amounts[i])));
+        maker_balance_after.erc721_owners.forEach((e) => expect(e).to.be.eq(maker));
 
-        maker_lot.erc20_amounts.map((expected_amount, i) => {
-            expect(taker_erc20_balance_after[i] - taker_erc20_balance_before[i]).to.be.eq(expected_amount);
-        });
-
-        taker_lot.erc20_amounts.map((expected_amount, i) => {
-            expect(maker_erc20_balance_after[i] - maker_erc20_balance_before[i]).to.be.eq(expected_amount);
-        });
-
-        await Promise.all(maker_lot.erc721.map((token, i) => {
-            const id_owner = ethers
-                .getContractAt('IERC721', token.toString())
-                .then((c) => c.ownerOf(maker_lot.erc721_ids[i]));
-            return expect(id_owner).to.eventually.be.eq(taker);
-        }));
-
-        await Promise.all(taker_lot.erc721.map((token, i) => {
-            const id_owner = ethers
-                .getContractAt('IERC721', token.toString())
-                .then((c) => c.ownerOf(taker_lot.erc721_ids[i]));
-            return expect(id_owner).to.eventually.be.eq(maker);
-        }));
+        expect(taker_balance_after.eth_balance).to.be.eq(taker_balance_before.eth_balance - tx_cost + BigInt(maker_lot.eth_amount) - BigInt(taker_lot.eth_amount));
+        taker_balance_after.erc20_balance.forEach((e, i) => expect(e).to.be.eq(taker_balance_before.erc20_balance[i] + BigInt(maker_lot.erc20_amounts[i])));
+        taker_balance_after.erc721_owners.forEach((e) => expect(e).to.be.eq(taker));
     }
 
 }
 
-export async function generateBailBalanceCheck(params: ParamsStruct) {
-    const maker = params.create_args.maker;
+export async function generateBailBalanceCheck(taker: string, params: ParamsStruct) {
+    const maker = params.create_args.maker.toString();
     const maker_lot = params.create_args.maker_lot;
-
-    const maker_eth_balance_before = await ethers.provider.getBalance(maker);
-
-    const maker_erc20_balance_before = await Promise.all(
-        maker_lot.erc20.map((token) => ethers.getContractAt('IERC20', token.toString()).then((c) => c.balanceOf(maker))),
-    );
+    const maker_balance_before = await getLotAssetBalance(maker, params.create_args.maker_lot);
+    const taker_balance_before = await getLotAssetBalance(taker, params.create_args.taker_lot);
 
     return async (tx: ContractTransactionReceipt) => {
         const tx_cost = tx.gasPrice * tx.gasUsed;
 
-        const maker_eth_balance_after = await ethers.provider.getBalance(maker);
+        const maker_balance_after = await getLotAssetBalance(maker, params.create_args.maker_lot);
+        const taker_balance_after = await getLotAssetBalance(taker, params.create_args.taker_lot);
 
-        expect(maker_eth_balance_after - maker_eth_balance_before).to.be.eq(BigInt(maker_lot.eth_amount) - tx_cost);
+        expect(maker_balance_after.eth_balance).to.be.eq(maker_balance_before.eth_balance - tx_cost + BigInt(maker_lot.eth_amount));
+        maker_balance_after.erc20_balance.forEach((e, i) => expect(e).to.be.eq(maker_balance_before.erc20_balance[i]));
+        maker_balance_after.erc721_owners.forEach((e, i) => expect(e).to.be.eq(maker_balance_before.erc721_owners[i]));
 
-        const maker_erc20_balance_after = await Promise.all(
-            maker_lot.erc20.map((token) => ethers.getContractAt('IERC20', token.toString()).then((c) => c.balanceOf(maker))),
-        );
-
-        maker_lot.erc20_amounts.map((expected_amount, i) => {
-            expect(maker_erc20_balance_after[i] - maker_erc20_balance_before[i]).to.be.eq(expected_amount);
-        });
-
-        await Promise.all(maker_lot.erc721.map((token, i) => {
-            const id_owner = ethers
-                .getContractAt('IERC721', token.toString())
-                .then((c) => c.ownerOf(maker_lot.erc721_ids[i]));
-            return expect(id_owner).to.eventually.be.eq(maker);
-        }));
+        expect(taker_balance_after.eth_balance).to.be.eq(taker_balance_before.eth_balance);
+        taker_balance_after.erc20_balance.forEach((e, i) => expect(e).to.be.eq(taker_balance_before.erc20_balance[i]));
+        taker_balance_after.erc721_owners.forEach((e, i) => expect(e).to.be.eq(taker_balance_before.erc721_owners[i]));
     }
+}
 
+function randomIndex(n: number) {
+    return Math.floor(Math.random() * n);
+}
+
+function randomSplitChoice<T>(arr: T[]) {
+    const split_index = 1 + randomIndex(arr.length - 1);
+    return [arr.slice(0, split_index), arr.slice(split_index)];
+}
+
+async function getLotAssetBalance(user: string, lot: LotStruct) {
+    const eth_balance = await ethers.provider.getBalance(user);
+
+    const erc20_balance = await Promise.all(
+        lot.erc20.map((token) => ethers.getContractAt('IERC20', token.toString()).then((c) => c.balanceOf(user))),
+    );
+
+    const erc721_owners = await Promise.all(
+        lot.erc721.map(
+            (token, i) => ethers
+                .getContractAt('IERC721', token.toString())
+                .then((c) => c.ownerOf(lot.erc721_ids[i])),
+        ),
+    );
+
+    return { eth_balance, erc20_balance, erc721_owners };
 }

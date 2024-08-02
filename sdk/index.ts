@@ -1,9 +1,10 @@
 import { ethers } from 'hardhat';
-import { ParamsStruct, SwapFactory } from '../typechain-types/SwapFactory';
+import { LotStruct, ParamsStruct } from '../typechain-types/contracts/SwapFactoryView';
 import { expect } from 'chai';
 import { AddressLike, Signer } from 'ethers';
 import { calculateSwapAddress } from '../sdk/utils';
 import { HardhatEthersSigner } from '@nomicfoundation/hardhat-ethers/signers';
+import { SwapFactory } from '../typechain-types';
 
 export class VirtualSwapObject {
     public readonly swap_factory_address: Readonly<string>;
@@ -76,49 +77,6 @@ export class VirtualSwapObject {
         return tx;
     }
 
-    async transfer(signer: HardhatEthersSigner) {
-        const { swap_address, swap_factory } = await this._verifyAddressCalculation();
-
-        const maker = await ethers.getSigner(this.params.create_args.maker.toString());
-        expect(signer.address).to.be.eq(maker.address);
-
-        const maker_lot = await swap_factory.getPendingMakerLot(this.params);
-
-        if (maker_lot.eth_amount != 0n) {
-            await maker.sendTransaction({ to: swap_address, value: maker_lot.eth_amount});
-        }
-        await Promise.all(maker_lot.erc20.map(
-            async (e, i) => {
-                const token = await ethers.getContractAt('IERC20', e.toString());
-                return token.connect(maker).transfer(swap_address, maker_lot.erc20_amounts[i]);
-            },
-        ));
-        await Promise.all(maker_lot.erc721.map(
-            async (e, i) => {
-                const token = await ethers.getContractAt('IERC721', e.toString());
-                return token.connect(maker).transferFrom(maker.address, swap_address, maker_lot.erc721_ids[i]);
-            },
-        ));
-    }
-
-    async approve(signer: HardhatEthersSigner) {
-        const { swap_address, swap_factory } = await this._verifyAddressCalculation();
-
-        const taker_lot = await swap_factory.getPendingTakerLot(signer, this.params);
-        await Promise.all(taker_lot.erc20.map(
-            async (e, i) => {
-                const token = await ethers.getContractAt('IERC20', e.toString());
-                return token.connect(signer).approve(swap_address, taker_lot.erc20_amounts[i]);
-            },
-        ));
-        await Promise.all(taker_lot.erc721.map(
-            async (e, i) => {
-                const token = await ethers.getContractAt('IERC721', e.toString());
-                return token.connect(signer).approve(swap_address, taker_lot.erc721_ids[i]);
-            },
-        ));
-    }
-
     async publish(signer: Signer) {
         const { swap_factory } = await this._verifyAddressCalculation();
 
@@ -129,6 +87,36 @@ export class VirtualSwapObject {
             .then((r) => r!);
 
         return tx;
+    }
+
+    async approveMaker(signer: HardhatEthersSigner) {
+        const { swap_address, swap_factory } = await this._verifyAddressCalculation();
+        const maker_lot = await swap_factory.getPendingApprovalsMaker(this.params);
+        if (maker_lot.eth_amount != 0n) {
+            await signer.sendTransaction({ to: swap_address, value: maker_lot.eth_amount });
+        }
+        return this._approve(signer, maker_lot, swap_address);
+    }
+
+    async approveTaker(signer: HardhatEthersSigner) {
+        const { swap_address, swap_factory } = await this._verifyAddressCalculation();
+        const taker_lot = await swap_factory.getPendingApprovalsTaker(signer.address, this.params);
+        return this._approve(signer, taker_lot, swap_address);
+    }
+
+    private async _approve(signer: HardhatEthersSigner, lot: LotStruct, swap_address: string) {
+        await Promise.all(lot.erc20.map(
+            async (e, i) => {
+                const token = await ethers.getContractAt('IERC20', e.toString());
+                return token.connect(signer).approve(swap_address, lot.erc20_amounts[i]);
+            },
+        ));
+        await Promise.all(lot.erc721.map(
+            async (e, i) => {
+                const token = await ethers.getContractAt('IERC721', e.toString());
+                return token.connect(signer).approve(swap_address, lot.erc721_ids[i]);
+            },
+        ));
     }
 
     private async _verifyAddressCalculation() {
